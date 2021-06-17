@@ -1,0 +1,12 @@
+# API ID and hash to authenticate the application (not the user).
+api_id =
+api_hash = ""
+
+# Only enable in chats with the given IDs.
+#
+# If this is empty, it will be enabled in all chats except `disabled_chats`,
+# because it makes no sense to run the logger with zero chats.
+enabled_chats = []
+
+# Disable in chats with the given IDs.
+disabled_chats = []
