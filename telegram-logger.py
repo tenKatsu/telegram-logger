@@ -51,6 +51,28 @@ def iso_date(dt):
     return dt.strftime('%Y-%m-%d %H:%M:%S')
 
 
+async def get_user(user_id, chat_id=None):
+    if not user_id:
+        return None
+
+    try:
+        return await client.get_entity(user_id)
+    except ValueError:
+        if not chat_id:
+            return None
+
+        await client.get_participants(chat_id)
+
+        try:
+            return await client.get_entity(user_id)
+        except ValueError:
+            await client.get_participants(chat_id, aggressive=True)
+            try:
+                return await client.get_entity(user_id)
+            except ValueError:
+                return None
+
+
 @client.on(events.NewMessage)
 async def on_new_message(event):
     msg = event.message
@@ -61,19 +83,7 @@ async def on_new_message(event):
     if not is_enabled(chat):
         return
 
-    if msg.from_id:
-        try:
-            user = await client.get_entity(msg.from_id)
-        except ValueError:
-            await client.get_participants(chat.id)
-
-            try:
-                user = await client.get_entity(msg.from_id)
-            except ValueError:
-                await client.get_participants(chat.id, aggressive=True)
-                user = await client.get_entity(msg.from_id)
-    else:
-        user = None
+    user = await get_user(msg.from_id, chat.id)
 
     text = msg.message
 
@@ -115,19 +125,7 @@ async def on_message_edited(event):
     if not is_enabled(chat):
         return
 
-    if msg.from_id:
-        try:
-            user = await client.get_entity(msg.from_id)
-        except ValueError:
-            await client.get_participants(chat.id)
-
-            try:
-                user = await client.get_entity(msg.from_id)
-            except ValueError:
-                await client.get_participants(chat.id, aggressive=True)
-                user = await client.get_entity(msg.from_id)
-    else:
-        user = None
+    user = await get_user(msg.from_id, chat.id)
 
     text = msg.message
 
@@ -210,7 +208,7 @@ async def on_message_deleted(event):
 
             c.execute("""
             SELECT
-                text
+                user_id, text
             FROM
                 events
             WHERE
@@ -228,14 +226,23 @@ async def on_message_deleted(event):
             row = c.fetchone()
 
         if row:
-            old_text = row[0]
+            user_id, old_text = row
         else:
-            old_text = None
+            user_id, old_text = None, None
+
+        if user_id:
+            user = await get_user(user_id, chat.id if chat else None)
+        else:
+            user = None
+        if user:
+            user_display = f'<{user.username or get_display_name(user)} ({user.id})>'
 
         out = f'{GRAY}{iso_date(date)} {BOLD}{RED}DEL'
         if chat:
             out += f' {GRAY}{chat_display}'
         out += f' {RESET}{GRAY}{msg_display}'
+        if user:
+            out += f' {RESET}{BOLD}{user_display}'
         if old_text:
             out += f' {BOLD}{RED}{old_text}'
         out += RESET
