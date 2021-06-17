@@ -131,4 +131,5 @@ async def on_message_deleted(event):
     print(out)
 
 
+print('Listening for messages')
 client.run_until_disconnected()
