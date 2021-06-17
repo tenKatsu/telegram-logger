@@ -232,7 +232,7 @@ async def on_message_deleted(event):
         else:
             old_text = None
 
-        out = f'{GRAY}{date} {BOLD}{RED}DEL'
+        out = f'{GRAY}{iso_date(date)} {BOLD}{RED}DEL'
         if chat:
             out += f' {GRAY}{chat_display}'
         out += f' {RESET}{GRAY}{msg_display}'
