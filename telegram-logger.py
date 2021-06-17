@@ -6,6 +6,18 @@ import toml
 from telethon import TelegramClient, events
 from telethon.tl.types import User
 
+RESET = '\x1b[0m'
+BOLD = '\x1b[1m'
+DIM = '\x1b[2m'
+RED = '\x1b[31m'
+GREEN = '\x1b[32m'
+YELLOW = '\x1b[33m'
+BLUE = '\x1b[34m'
+MAGENTA = '\x1b[35m'
+CYAN = '\x1b[36m'
+WHITE = '\x1b[37m'
+GRAY = '\x1b[90m'
+
 config = toml.load('config.toml')
 
 client = TelegramClient('telegram-logger', config['api_id'], config['api_hash'])
@@ -58,10 +70,10 @@ async def on_new_message(event):
 
     text = msg.message
 
-    out = f'{date} MSG {chat_display} {msg_display}'
+    out = f'{GRAY}{date} {BOLD}{BLUE}MSG {GRAY}{chat_display} {RESET}{GRAY}{msg_display}'
     if user_display:
-        out += f' {user_display}'
-    out += f' {text}'
+        out += f' {RESET}{BOLD}{user_display}'
+    out += f' {RESET}{text}'
     print(out)
 
 
@@ -97,10 +109,10 @@ async def on_message_edited(event):
 
     text = msg.message
 
-    out = f'{date} EDIT {chat_display} {msg_display}'
+    out = f'{GRAY}{date} {BOLD}{YELLOW}EDIT {GRAY}{chat_display} {RESET}{GRAY}{msg_display}'
     if user_display:
-        out += f' {user_display}'
-    out += f' {text}'
+        out += f' {RESET}{BOLD}{user_display}'
+    out += f' {RESET}{text}'
     print(out)
 
 
@@ -122,10 +134,10 @@ async def on_message_deleted(event):
 
     msg_display = f'({", ".join(str(x) for x in event.deleted_ids)})'
 
-    out = f'{date} DEL'
+    out = f'{GRAY}{date} {BOLD}{RED}DEL'
     if chat_display:
-        out += f' {chat_display}'
-    out += f' {msg_display}'
+        out += f' {GRAY}{chat_display}'
+    out += f' {RESET}{GRAY}{msg_display}'
     print(out)
 
 
