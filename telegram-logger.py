@@ -153,6 +153,10 @@ async def on_message_edited(event):
     else:
         old_text = None
 
+    if text == old_text:
+        # Non-text change (e.g. inline keyboard)
+        return
+
     chat_display = f'[{chat.username or get_display_name(chat)} ({chat.id})]'
     msg_display = f'({msg.id})'
     if user:
