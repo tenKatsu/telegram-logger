@@ -106,8 +106,6 @@ async def on_message_edited(event):
 
 @client.on(events.MessageDeleted)
 async def on_message_deleted(event):
-    print(event)
-
     msg = event.original_update
 
     date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
