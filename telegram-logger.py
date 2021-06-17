@@ -166,7 +166,7 @@ async def on_message_edited(event):
     if old_text:
         out += f' {RED}{old_text} {RESET}-> {BOLD}{GREEN}{text}{RESET}'
     else:
-        out += f' {RESET}{text}{RESET}'
+        out += f' {GREEN}{text}{RESET}'
     print(out)
 
     with sqlite3.connect(DB_PATH) as conn:
