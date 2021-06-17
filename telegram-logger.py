@@ -74,7 +74,7 @@ async def on_message_edited(event):
         return
     if disabled_chats and chat.id in disabled_chats:
         return
-    chat_display = f'[{chat.username or chat.title} ({chat.id})]'
+    chat_display = f'[{chat.username or get_display_name(chat)} ({chat.id})]'
 
     msg_display = f'({msg.id})'
 
@@ -89,7 +89,7 @@ async def on_message_edited(event):
             except ValueError:
                 await client.get_participants(chat.id, aggressive=True)
                 user = await client.get_entity(msg.from_id)
-        user_display = f'<{user.username} ({user.id})>'
+        user_display = f'<{user.username or get_display_name(user)} ({user.id})>'
     else:
         user_display = None
 
@@ -100,5 +100,6 @@ async def on_message_edited(event):
         out += f' {user_display}'
     out += f' {text}'
     print(out)
+
 
 client.run_until_disconnected()
