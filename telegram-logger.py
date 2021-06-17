@@ -40,11 +40,11 @@ def get_display_name(entity):
     return display_name
 
 
-def is_enabled(chat):
+def is_enabled(chat_id):
     enabled_chats = config.get('enabled_chats', [])
     disabled_chats = config.get('disabled_chats', [])
 
-    return (not enabled_chats or chat.id in enabled_chats) and (chat.id not in disabled_chats)
+    return (not enabled_chats or chat_id in enabled_chats) and (chat_id not in disabled_chats)
 
 
 def iso_date(dt):
@@ -80,7 +80,7 @@ async def on_new_message(event):
     date = msg.date
 
     chat = await client.get_entity(msg.peer_id)
-    if not is_enabled(chat):
+    if not is_enabled(chat.id):
         return
 
     user = await get_user(msg.from_id, chat.id)
@@ -122,7 +122,7 @@ async def on_message_edited(event):
     date = msg.date
 
     chat = await client.get_entity(msg.peer_id)
-    if not is_enabled(chat):
+    if not is_enabled(chat.id):
         return
 
     user = await get_user(msg.from_id, chat.id)
@@ -196,7 +196,7 @@ async def on_message_deleted(event):
 
     if getattr(msg, 'channel_id', None):
         chat = await client.get_entity(msg.channel_id)
-        if not is_enabled(chat):
+        if not is_enabled(chat.id):
             return
     else:
         chat = None
@@ -212,7 +212,7 @@ async def on_message_deleted(event):
 
             c.execute("""
             SELECT
-                user_id, text
+                chat_id, user_id, text
             FROM
                 events
             WHERE
@@ -230,9 +230,12 @@ async def on_message_deleted(event):
             row = c.fetchone()
 
         if row:
-            user_id, old_text = row
+            chat_id, user_id, old_text = row
         else:
-            user_id, old_text = None, None
+            chat_id, user_id, old_text = None, None, None
+
+        if chat_id and not is_enabled(chat_id):
+            return
 
         if user_id:
             user = await get_user(user_id, chat.id if chat else None)
