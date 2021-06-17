@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
+import sqlite3
 from datetime import datetime
 
 import toml
 from telethon import TelegramClient, events
 from telethon.tl.types import User
+
 
 RESET = '\x1b[0m'
 BOLD = '\x1b[1m'
@@ -18,13 +20,13 @@ CYAN = '\x1b[36m'
 WHITE = '\x1b[37m'
 GRAY = '\x1b[90m'
 
+DB_PATH = 'data.sqlite3'
+
+
 config = toml.load('config.toml')
 
 client = TelegramClient('telegram-logger', config['api_id'], config['api_hash'])
 client.start()
-
-enabled_chats = config.get('enabled_chats', [])
-disabled_chats = config.get('disabled_chats', [])
 
 
 def get_display_name(entity):
@@ -38,20 +40,26 @@ def get_display_name(entity):
     return display_name
 
 
+def is_enabled(chat):
+    enabled_chats = config.get('enabled_chats', [])
+    disabled_chats = config.get('disabled_chats', [])
+
+    return (not enabled_chats or chat.id in enabled_chats) and (chat.id not in disabled_chats)
+
+
+def iso_date(dt):
+    return dt.strftime('%Y-%m-%d %H:%M:%S')
+
+
 @client.on(events.NewMessage)
 async def on_new_message(event):
     msg = event.message
 
-    date = msg.date.strftime('%Y-%m-%d %H:%M:%S')
+    date = msg.date
 
     chat = await client.get_entity(msg.peer_id)
-    if enabled_chats and chat.id not in enabled_chats:
+    if not is_enabled(chat):
         return
-    if disabled_chats and chat.id in disabled_chats:
-        return
-    chat_display = f'[{chat.username or get_display_name(chat)} ({chat.id})]'
-
-    msg_display = f'({msg.id})'
 
     if msg.from_id:
         try:
@@ -64,33 +72,48 @@ async def on_new_message(event):
             except ValueError:
                 await client.get_participants(chat.id, aggressive=True)
                 user = await client.get_entity(msg.from_id)
-        user_display = f'<{user.username or get_display_name(user)} ({user.id})>'
     else:
-        user_display = None
+        user = None
 
     text = msg.message
 
-    out = f'{GRAY}{date} {BOLD}{BLUE}MSG {GRAY}{chat_display} {RESET}{GRAY}{msg_display}'
-    if user_display:
+    chat_display = f'[{chat.username or get_display_name(chat)} ({chat.id})]'
+    msg_display = f'({msg.id})'
+    if user:
+        user_display = f'<{user.username or get_display_name(user)} ({user.id})>'
+
+    out = f'{GRAY}{iso_date(date)} {BOLD}{BLUE}MSG {GRAY}{chat_display} {RESET}{GRAY}{msg_display}'
+    if user:
         out += f' {RESET}{BOLD}{user_display}'
     out += f' {RESET}{text}'
     print(out)
+
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+
+        c.execute("""
+            INSERT INTO events
+                (type, date, chat_id, message_id, user_id, text)
+            VALUES
+                ('new_message', :date, :chat_id, :message_id, :user_id, :text)
+        """, {
+            'date': msg.date.timestamp(),
+            'chat_id': chat.id,
+            'message_id': msg.id,
+            'user_id': user.id if user else None,
+            'text': text,
+        })
 
 
 @client.on(events.MessageEdited)
 async def on_message_edited(event):
     msg = event.message
 
-    date = msg.date.strftime('%Y-%m-%d %H:%M:%S')
+    date = msg.date
 
     chat = await client.get_entity(msg.peer_id)
-    if enabled_chats and chat.id not in enabled_chats:
+    if not is_enabled(chat):
         return
-    if disabled_chats and chat.id in disabled_chats:
-        return
-    chat_display = f'[{chat.username or get_display_name(chat)} ({chat.id})]'
-
-    msg_display = f'({msg.id})'
 
     if msg.from_id:
         try:
@@ -103,43 +126,148 @@ async def on_message_edited(event):
             except ValueError:
                 await client.get_participants(chat.id, aggressive=True)
                 user = await client.get_entity(msg.from_id)
-        user_display = f'<{user.username or get_display_name(user)} ({user.id})>'
     else:
-        user_display = None
+        user = None
 
     text = msg.message
 
-    out = f'{GRAY}{date} {BOLD}{YELLOW}EDIT {GRAY}{chat_display} {RESET}{GRAY}{msg_display}'
-    if user_display:
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+
+        c.execute("""
+        SELECT
+            text
+        FROM
+            events
+        WHERE
+            chat_id = :chat_id
+            AND message_id = :message_id
+        ORDER BY
+            rowid DESC
+        LIMIT
+            1
+        """, {'chat_id': chat.id, 'message_id': msg.id})
+
+        row = c.fetchone()
+
+    if row:
+        old_text = row[0]
+    else:
+        old_text = None
+
+    chat_display = f'[{chat.username or get_display_name(chat)} ({chat.id})]'
+    msg_display = f'({msg.id})'
+    if user:
+        user_display = f'<{user.username or get_display_name(user)} ({user.id})>'
+
+    out = f'{GRAY}{iso_date(date)} {BOLD}{YELLOW}EDIT {GRAY}{chat_display} {RESET}{GRAY}{msg_display}'
+    if user:
         out += f' {RESET}{BOLD}{user_display}'
-    out += f' {RESET}{text}'
+    if old_text:
+        out += f' {RED}{old_text} {RESET}-> {BOLD}{GREEN}{text}'
+    else:
+        out += f' {RESET}{text}'
     print(out)
+
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+
+        c.execute("""
+            INSERT INTO events
+                (type, date, chat_id, message_id, user_id, text)
+            VALUES
+                ('message_edited', :date, :chat_id, :message_id, :user_id, :text)
+        """, {
+            'date': msg.date.timestamp(),
+            'chat_id': chat.id,
+            'message_id': msg.id,
+            'user_id': user.id if user else None,
+            'text': text,
+        })
 
 
 @client.on(events.MessageDeleted)
 async def on_message_deleted(event):
     msg = event.original_update
 
-    date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    date = datetime.now()
 
     if getattr(msg, 'channel_id', None):
         chat = await client.get_entity(msg.channel_id)
-        if enabled_chats and chat.id not in enabled_chats:
+        if not is_enabled(chat):
             return
-        if disabled_chats and chat.id in disabled_chats:
-            return
-        chat_display = f'[{chat.username or get_display_name(chat)} ({chat.id})]'
     else:
-        chat_display = None
+        chat = None
 
-    msg_display = f'({", ".join(str(x) for x in event.deleted_ids)})'
+    if chat:
+        chat_display = f'[{chat.username or get_display_name(chat)} ({chat.id})]'
 
-    out = f'{GRAY}{date} {BOLD}{RED}DEL'
-    if chat_display:
-        out += f' {GRAY}{chat_display}'
-    out += f' {RESET}{GRAY}{msg_display}'
-    print(out)
+    for msg_id in event.deleted_ids:
+        msg_display = f'({msg_id})'
 
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+
+            c.execute("""
+            SELECT
+                text
+            FROM
+                events
+            WHERE
+                chat_id LIKE :chat_id
+                AND message_id = :message_id
+            ORDER BY
+                rowid DESC
+            LIMIT
+                1
+            """, {
+                'chat_id': chat.id if chat else '%',
+                'message_id': msg_id,
+            })
+
+            row = c.fetchone()
+
+        if row:
+            old_text = row[0]
+        else:
+            old_text = None
+
+        out = f'{GRAY}{date} {BOLD}{RED}DEL'
+        if chat:
+            out += f' {GRAY}{chat_display}'
+        out += f' {RESET}{GRAY}{msg_display}'
+        if old_text:
+            out += f' {BOLD}{RED}{old_text}'
+        print(out)
+
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+
+            c.execute("""
+                INSERT INTO events
+                    (type, date, chat_id, message_id)
+                VALUES
+                    ('message_deleted', :date, :chat_id, :message_id)
+            """, {
+                'date': date.timestamp(),
+                'chat_id': chat.id if chat else None,
+                'message_id': msg_id,
+            })
+
+
+with sqlite3.connect(DB_PATH) as conn:
+    c = conn.cursor()
+
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS events (
+        type TEXT NOT NULL,
+        date REAL NOT NULL,
+        chat_id INTEGER,
+        message_id INTEGER NOT NULL,
+        user_id INTEGER,
+        text TEXT
+    )
+    """)
 
 print('Listening for messages')
 client.run_until_disconnected()
