@@ -58,7 +58,7 @@ async def on_new_message(event):
 
     text = msg.message
 
-    out = f'{date} {chat_display} MSG {msg_display}'
+    out = f'{date} MSG {chat_display} {msg_display}'
     if user_display:
         out += f' {user_display}'
     out += f' {text}'
@@ -97,7 +97,7 @@ async def on_message_edited(event):
 
     text = msg.message
 
-    out = f'{date} {chat_display} EDIT {msg_display}'
+    out = f'{date} EDIT {chat_display} {msg_display}'
     if user_display:
         out += f' {user_display}'
     out += f' {text}'
@@ -122,10 +122,10 @@ async def on_message_deleted(event):
 
     msg_display = f'({", ".join(str(x) for x in event.deleted_ids)})'
 
-    out = date
+    out = f'{date} DEL'
     if chat_display:
         out += f' {chat_display}'
-    out += f' DEL {msg_display}'
+    out += f' {msg_display}'
     print(out)
 
 
