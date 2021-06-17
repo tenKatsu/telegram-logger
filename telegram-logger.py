@@ -120,7 +120,7 @@ async def on_message_deleted(event):
     else:
         chat_display = None
 
-    msg_display = f'({event.deleted_id})'
+    msg_display = f'({", ".join(str(x) for x in event.deleted_ids)})'
 
     out = date
     if chat_display:
