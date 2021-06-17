@@ -3,7 +3,7 @@
 A simple Python script using Telethon to log all (or some) messages a user or bot account can see on Telegram.
 
 # Requirements
-* Python 3.9 or newer
+* Python 3.6 or newer
 * Python package dependencies: `poetry install` or `pip install -r requirements.txt`
 * A Telegram user or bot account
 
