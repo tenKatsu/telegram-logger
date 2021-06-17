@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from datetime import datetime
+
 import toml
 from telethon import TelegramClient, events
 from telethon.tl.types import User
@@ -99,6 +101,33 @@ async def on_message_edited(event):
     if user_display:
         out += f' {user_display}'
     out += f' {text}'
+    print(out)
+
+
+@client.on(events.MessageDeleted)
+async def on_message_deleted(event):
+    print(event)
+
+    msg = event.original_update
+
+    date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    if getattr(msg, 'channel_id', None):
+        chat = await client.get_entity(msg.channel_id)
+        if enabled_chats and chat.id not in enabled_chats:
+            return
+        if disabled_chats and chat.id in disabled_chats:
+            return
+        chat_display = f'[{chat.username or get_display_name(chat)} ({chat.id})]'
+    else:
+        chat_display = None
+
+    msg_display = f'({event.deleted_id})'
+
+    out = date
+    if chat_display:
+        out += f' {chat_display}'
+    out += f' DEL {msg_display}'
     print(out)
 
 
