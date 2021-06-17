@@ -85,7 +85,7 @@ async def on_new_message(event):
     out = f'{GRAY}{iso_date(date)} {BOLD}{BLUE}MSG {GRAY}{chat_display} {RESET}{GRAY}{msg_display}'
     if user:
         out += f' {RESET}{BOLD}{user_display}'
-    out += f' {RESET}{text}'
+    out += f' {RESET}{text}{RESET}'
     print(out)
 
     with sqlite3.connect(DB_PATH) as conn:
@@ -164,9 +164,9 @@ async def on_message_edited(event):
     if user:
         out += f' {RESET}{BOLD}{user_display}'
     if old_text:
-        out += f' {RED}{old_text} {RESET}-> {BOLD}{GREEN}{text}'
+        out += f' {RED}{old_text} {RESET}-> {BOLD}{GREEN}{text}{RESET}'
     else:
-        out += f' {RESET}{text}'
+        out += f' {RESET}{text}{RESET}'
     print(out)
 
     with sqlite3.connect(DB_PATH) as conn:
@@ -238,6 +238,7 @@ async def on_message_deleted(event):
         out += f' {RESET}{GRAY}{msg_display}'
         if old_text:
             out += f' {BOLD}{RED}{old_text}'
+        out += RESET
         print(out)
 
         with sqlite3.connect(DB_PATH) as conn:
