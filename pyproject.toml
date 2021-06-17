@@ -9,6 +9,8 @@ repository = "https://github.com/nyuszika7h/telegram-logger"
 
 [tool.poetry.dependencies]
 python = "^3.6"
+Telethon = "^1.21.1"
+toml = "^0.10.2"
 
 [tool.poetry.dev-dependencies]
 
