@@ -164,7 +164,7 @@ async def on_message_edited(event):
     if user:
         out += f' {RESET}{BOLD}{user_display}'
     if old_text:
-        out += f' {RED}{old_text} {RESET}-> {BOLD}{GREEN}{text}{RESET}'
+        out += f'\n-{RED}{old_text} {RESET}\n+{BOLD}{GREEN}{text}{RESET}'
     else:
         out += f' {GREEN}{text}{RESET}'
     print(out)
