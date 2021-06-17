@@ -192,7 +192,7 @@ async def on_message_edited(event):
 async def on_message_deleted(event):
     msg = event.original_update
 
-    date = datetime.now()
+    date = datetime.utcnow()
 
     if getattr(msg, 'channel_id', None):
         chat = await client.get_entity(msg.channel_id)
