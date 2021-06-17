@@ -166,7 +166,7 @@ async def on_message_edited(event):
     if user:
         out += f' {RESET}{BOLD}{user_display}'
     if old_text:
-        out += f'\n{RESET}-{BOLD}{RED}{old_text} {RESET}\n+{BOLD}{GREEN}{text}{RESET}'
+        out += f'\n{RESET}-{RED}{old_text} {RESET}\n+{GREEN}{text}{RESET}'
     else:
         out += f' {GREEN}{text}{RESET}'
     print(out)
@@ -251,7 +251,7 @@ async def on_message_deleted(event):
         if user:
             out += f' {RESET}{BOLD}{user_display}'
         if old_text:
-            out += f' {BOLD}{RED}{old_text}'
+            out += f' {RED}{old_text}'
         out += RESET
         print(out)
 
