@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+import re
 import sqlite3
 from datetime import datetime
+from pathlib import Path
 
 import toml
 from telethon import TelegramClient, events
-from telethon.tl.types import User
+from telethon.tl.types import DocumentAttributeFilename, MessageMediaWebPage, User
 
 
 RESET = '\x1b[0m'
@@ -96,27 +98,50 @@ async def on_new_message(event):
     if user:
         user_display = f'<{get_display_name(user)} ({user.id})>'
 
-    out = f'{GRAY}{iso_date(date)} {BOLD}{BLUE}MSG {GRAY}{chat_display} {RESET}{GRAY}{msg_display}'
+    out = f'{GRAY}{iso_date(date)}{RESET} {BOLD}{BLUE}MSG{RESET} {BOLD}{GRAY}{chat_display}{RESET} {GRAY}{msg_display}{RESET}'
     if user:
-        out += f' {RESET}{BOLD}{user_display}'
-    out += f' {RESET}{text}{RESET}'
+        out += f' {BOLD}{user_display}{RESET}'
+    if text:
+        out += f' {text}{RESET}'
+    if msg.media and not isinstance(msg.media, MessageMediaWebPage):
+        media_type = re.sub(r'^MessageMedia', '', msg.media.__class__.__name__)
+        try:
+            filename = next(x.file_name for x in msg.media.document.attributes if isinstance(x, DocumentAttributeFilename))
+        except (AttributeError, StopIteration):
+            filename = None
+
+        if filename:
+            media_display = f'[{media_type}: {filename}]'
+        else:
+            media_display = f'[{media_type}]'
+        out += f' {MAGENTA}{media_display}{RESET}'
+    else:
+        media_type = None
+        filename = None
     print(out)
 
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
 
         c.execute("""
-            INSERT INTO events
-                (type, date, chat_id, message_id, user_id, text)
+            INSERT INTO event
+                (type, date, chat_id, message_id, user_id, text, media_type, media_filename)
             VALUES
-                ('new_message', :date, :chat_id, :message_id, :user_id, :text)
+                ('new_message', :date, :chat_id, :message_id, :user_id, :text, :media_type, :media_filename)
         """, {
             'date': msg.date.timestamp(),
             'chat_id': chat.id,
             'message_id': msg.id,
             'user_id': user.id if user else None,
             'text': text,
+            'media_type': media_type,
+            'media_filename': filename,
         })
+
+    if msg.media and not isinstance(msg.media, MessageMediaWebPage):
+        path = Path('media', str(chat.id), str(msg.id))
+        path.mkdir(parents=True, exist_ok=True)
+        await client.download_media(msg, path)
 
 
 @client.on(events.MessageEdited)
@@ -138,9 +163,9 @@ async def on_message_edited(event):
 
         c.execute("""
         SELECT
-            text
+            text, media_type, media_filename
         FROM
-            events
+            event
         WHERE
             chat_id = :chat_id
             AND message_id = :message_id
@@ -153,43 +178,90 @@ async def on_message_edited(event):
         row = c.fetchone()
 
     if row:
-        old_text = row[0]
+        old_text, old_media_type, old_filename = row
     else:
-        old_text = None
+        old_text, old_media_type, old_filename = None, None, None
 
-    if text == old_text:
-        # Non-text change (e.g. inline keyboard)
-        return
+    # TODO: Find a way to check if media is the same
+    #if text == old_text:
+    #    # Non-text change (e.g. inline keyboard)
+    #    return
 
     chat_display = f'[{get_display_name(chat)} ({chat.id})]'
     msg_display = f'({msg.id})'
     if user:
         user_display = f'<{get_display_name(user)} ({user.id})>'
-
-    out = f'{GRAY}{iso_date(date)} {BOLD}{YELLOW}EDIT {GRAY}{chat_display} {RESET}{GRAY}{msg_display}'
-    if user:
-        out += f' {RESET}{BOLD}{user_display}'
-    if old_text:
-        out += f'\n{RESET}-{RED}{old_text} {RESET}\n+{GREEN}{text}{RESET}'
+    if msg.media and not isinstance(msg.media, MessageMediaWebPage):
+        media_type = re.sub(r'^MessageMedia', '', msg.media.__class__.__name__)
+        try:
+            filename = next(x.file_name for x in msg.media.document.attributes if isinstance(x, DocumentAttributeFilename))
+        except (AttributeError, StopIteration):
+            filename = None
+        if filename:
+            media_display = f'[{media_type}: {filename}]'
+        else:
+            media_display = f'[{media_type}]'
     else:
-        out += f' {GREEN}{text}{RESET}'
+        media_type = None
+        filename = None
+
+    out = f'{GRAY}{iso_date(date)}{RESET} {BOLD}{YELLOW}EDIT{RESET} {BOLD}{GRAY}{chat_display}{RESET} {GRAY}{msg_display}{RESET}'
+    if user:
+        out += f' {BOLD}{user_display}{RESET}'
+    if old_text or old_media_type:
+        out += '\n-'
+        if old_text:
+            out += f'{RED}{old_text}{RESET}'
+        if old_media_type:
+            if old_filename:
+                old_media_display = f'[{old_media_type}: {old_filename}]'
+            else:
+                old_media_display = f'[{old_media_type}]'
+
+            if old_text:
+                out += ' '
+            out += f'{MAGENTA}{old_media_display}{RESET}'
+
+        out += '\n+'
+        if text:
+            out += f'{GREEN}{text}{RESET}'
+        if msg.media and not isinstance(msg.media, MessageMediaWebPage):
+            if text:
+                out += ' '
+            if filename:
+                media_display = f'[{media_type}: {filename}]'
+            else:
+                media_display = f'[{media_type}]'
+            out += f'{MAGENTA}{media_display}{RESET}'
+    else:
+        if text:
+            out += f' {GREEN}{text}{RESET}'
+        if msg.media and not isinstance(msg.media, MessageMediaWebPage):
+            out += f' {MAGENTA}{media_display}{RESET}'
     print(out)
 
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
 
         c.execute("""
-            INSERT INTO events
-                (type, date, chat_id, message_id, user_id, text)
+            INSERT INTO event
+                (type, date, chat_id, message_id, user_id, text, media_type, media_filename)
             VALUES
-                ('message_edited', :date, :chat_id, :message_id, :user_id, :text)
+                ('message_edited', :date, :chat_id, :message_id, :user_id, :text, :media_type, :media_filename)
         """, {
             'date': msg.date.timestamp(),
             'chat_id': chat.id,
             'message_id': msg.id,
             'user_id': user.id if user else None,
             'text': text,
+            'media_type': media_type,
+            'media_filename': filename,
         })
+
+    if msg.media and not isinstance(msg.media, MessageMediaWebPage):
+        path = Path('media', str(chat.id), str(msg.id))
+        path.mkdir(parents=True, exist_ok=True)
+        await client.download_media(msg, path)
 
 
 @client.on(events.MessageDeleted)
@@ -216,9 +288,9 @@ async def on_message_deleted(event):
 
             c.execute("""
             SELECT
-                chat_id, user_id, text
+                chat_id, user_id, text, media_type, media_filename
             FROM
-                events
+                event
             WHERE
                 chat_id LIKE :chat_id
                 AND message_id = :message_id
@@ -234,9 +306,9 @@ async def on_message_deleted(event):
             row = c.fetchone()
 
         if row:
-            chat_id, user_id, old_text = row
+            chat_id, user_id, old_text, old_media_type, old_filename = row
         else:
-            chat_id, user_id, old_text = None, None, None
+            chat_id, user_id, old_text, old_media_type, old_filename = None, None, None, None, None
 
         if chat_id and not is_enabled(chat_id):
             return
@@ -248,14 +320,23 @@ async def on_message_deleted(event):
         if user:
             user_display = f'<{get_display_name(user)} ({user.id})>'
 
-        out = f'{GRAY}{iso_date(date)} {BOLD}{RED}DEL'
+        out = f'{GRAY}{iso_date(date)}{RESET} {BOLD}{RED}DEL{RESET}'
         if chat:
-            out += f' {GRAY}{chat_display}'
-        out += f' {RESET}{GRAY}{msg_display}'
+            out += f' {BOLD}{GRAY}{chat_display}{RESET}'
+        out += f' {GRAY}{msg_display}{RESET}'
         if user:
             out += f' {RESET}{BOLD}{user_display}'
         if old_text:
             out += f' {RESET}{RED}{old_text}'
+        if old_media_type:
+            if old_filename:
+                old_media_display = f'[{old_media_type}: {old_filename}]'
+            else:
+                old_media_display = f'[{old_media_type}]'
+
+            if old_text:
+                out += ' '
+            out += f'{MAGENTA}{old_media_display}{RESET}'
         out += RESET
         print(out)
 
@@ -263,7 +344,7 @@ async def on_message_deleted(event):
             c = conn.cursor()
 
             c.execute("""
-                INSERT INTO events
+                INSERT INTO event
                     (type, date, chat_id, message_id)
                 VALUES
                     ('message_deleted', :date, :chat_id, :message_id)
@@ -277,6 +358,9 @@ async def on_message_deleted(event):
 with sqlite3.connect(DB_PATH) as conn:
     c = conn.cursor()
 
+    row = c.execute('PRAGMA user_version')
+    schema_version = row.fetchone()[0]
+
     c.execute("""
     CREATE TABLE IF NOT EXISTS events (
         type TEXT NOT NULL,
@@ -287,6 +371,13 @@ with sqlite3.connect(DB_PATH) as conn:
         text TEXT
     )
     """)
+
+    if schema_version < 1:
+        print('Performing database migration from version 0 to 1')
+        c.execute('ALTER TABLE events RENAME TO event')
+        c.execute('ALTER TABLE event ADD media_type TEXT')
+        c.execute('ALTER TABLE event ADD media_filename TEXT')
+        c.execute('PRAGMA user_version = 1')
 
 print('Listening for messages')
 client.run_until_disconnected()
