@@ -30,6 +30,10 @@ client.start()
 
 
 def get_display_name(entity):
+    username = getattr(entity, 'username', None)
+    if username:
+        return username
+
     if isinstance(entity, User):
         display_name = entity.first_name
         if entity.last_name:
@@ -87,10 +91,10 @@ async def on_new_message(event):
 
     text = msg.message
 
-    chat_display = f'[{chat.username or get_display_name(chat)} ({chat.id})]'
+    chat_display = f'[{get_display_name(chat)} ({chat.id})]'
     msg_display = f'({msg.id})'
     if user:
-        user_display = f'<{user.username or get_display_name(user)} ({user.id})>'
+        user_display = f'<{get_display_name(user)} ({user.id})>'
 
     out = f'{GRAY}{iso_date(date)} {BOLD}{BLUE}MSG {GRAY}{chat_display} {RESET}{GRAY}{msg_display}'
     if user:
@@ -157,10 +161,10 @@ async def on_message_edited(event):
         # Non-text change (e.g. inline keyboard)
         return
 
-    chat_display = f'[{chat.username or get_display_name(chat)} ({chat.id})]'
+    chat_display = f'[{get_display_name(chat)} ({chat.id})]'
     msg_display = f'({msg.id})'
     if user:
-        user_display = f'<{user.username or get_display_name(user)} ({user.id})>'
+        user_display = f'<{get_display_name(user)} ({user.id})>'
 
     out = f'{GRAY}{iso_date(date)} {BOLD}{YELLOW}EDIT {GRAY}{chat_display} {RESET}{GRAY}{msg_display}'
     if user:
@@ -202,7 +206,7 @@ async def on_message_deleted(event):
         chat = None
 
     if chat:
-        chat_display = f'[{chat.username or get_display_name(chat)} ({chat.id})]'
+        chat_display = f'[{get_display_name(chat)} ({chat.id})]'
 
     for msg_id in event.deleted_ids:
         msg_display = f'({msg_id})'
@@ -242,7 +246,7 @@ async def on_message_deleted(event):
         else:
             user = None
         if user:
-            user_display = f'<{user.username or get_display_name(user)} ({user.id})>'
+            user_display = f'<{get_display_name(user)} ({user.id})>'
 
         out = f'{GRAY}{iso_date(date)} {BOLD}{RED}DEL'
         if chat:
