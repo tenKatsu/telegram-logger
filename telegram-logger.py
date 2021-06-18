@@ -123,7 +123,7 @@ async def on_new_message(event):
 async def on_message_edited(event):
     msg = event.message
 
-    date = msg.date
+    date = msg.edit_date
 
     chat = await client.get_entity(msg.peer_id)
     if not is_enabled(chat.id):
