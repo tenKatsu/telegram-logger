@@ -139,5 +139,7 @@ cython_debug/
 
 # Project-specific
 config.toml
+data.sqlite3
+data.sqlite3-journal
 telegram-logger.session
 telegram-logger.session-journal
