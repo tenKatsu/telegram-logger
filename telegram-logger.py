@@ -375,7 +375,7 @@ async def on_message_deleted(event):
         out += RESET
 
         if log_to_file:
-            logfile = Path('logs', f'{chat.id}.log')
+            logfile = Path('logs', f'{chat.id if chat else "unknown"}.log')
             with logfile.open('a') as fd:
                 fd.write(f'{out}\n')
         else:
