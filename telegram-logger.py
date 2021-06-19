@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import re
+import sys
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -10,28 +11,47 @@ from telethon import TelegramClient, events
 from telethon.tl.types import DocumentAttributeFilename, MessageMediaWebPage, User
 
 
-RESET = '\x1b[0m'
-BOLD = '\x1b[1m'
-DIM = '\x1b[2m'
-RED = '\x1b[31m'
-GREEN = '\x1b[32m'
-YELLOW = '\x1b[33m'
-BLUE = '\x1b[34m'
-MAGENTA = '\x1b[35m'
-CYAN = '\x1b[36m'
-WHITE = '\x1b[37m'
-GRAY = '\x1b[90m'
-
 DB_PATH = 'data.sqlite3'
 
 
 config = toml.load('config.toml')
 
+api_id = config.get('api_id')
+api_hash = config.get('api_hash')
 enabled_chats = config.get('enabled_chats', [])
 disabled_chats = config.get('disabled_chats', [])
 save_media = config.get('save_media', True)
+log_to_file = config.get('log_to_file', False)
+log_colors = config.get('log_colors', not log_to_file and sys.stdout.isatty())
 
-client = TelegramClient('telegram-logger', config['api_id'], config['api_hash'])
+
+if log_colors:
+    RESET = '\x1b[0m'
+    BOLD = '\x1b[1m'
+    DIM = '\x1b[2m'
+    RED = '\x1b[31m'
+    GREEN = '\x1b[32m'
+    YELLOW = '\x1b[33m'
+    BLUE = '\x1b[34m'
+    MAGENTA = '\x1b[35m'
+    CYAN = '\x1b[36m'
+    WHITE = '\x1b[37m'
+    GRAY = '\x1b[90m'
+else:
+    RESET = ''
+    BOLD = ''
+    DIM = ''
+    RED = ''
+    GREEN = ''
+    YELLOW = ''
+    BLUE = ''
+    MAGENTA = ''
+    CYAN = ''
+    WHITE = ''
+    GRAY = ''
+
+
+client = TelegramClient('telegram-logger', api_id, api_hash)
 client.start()
 
 
@@ -119,7 +139,14 @@ async def on_new_message(event):
     else:
         media_type = None
         filename = None
-    print(out)
+
+    if log_to_file:
+        logfile = Path('logs', f'{chat.id}.log')
+        logfile.parent.mkdir(exist_ok=True)
+        logfile.open('a')
+        logfile.write_text(f'{out}\n')
+    else:
+        print(out)
 
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
@@ -239,7 +266,14 @@ async def on_message_edited(event):
             out += f' {GREEN}{text}{RESET}'
         if msg.media and not isinstance(msg.media, MessageMediaWebPage):
             out += f' {MAGENTA}{media_display}{RESET}'
-    print(out)
+
+    if log_to_file:
+        logfile = Path('logs', f'{chat.id}.log')
+        logfile.parent.mkdir(exist_ok=True)
+        logfile.open('a')
+        logfile.write_text(f'{out}\n')
+    else:
+        print(out)
 
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
@@ -339,7 +373,13 @@ async def on_message_deleted(event):
                 out += ' '
             out += f'{MAGENTA}{old_media_display}{RESET}'
         out += RESET
-        print(out)
+
+        if log_to_file:
+            logfile = Path('logs', f'{chat.id}.log')
+            logfile.open('a')
+            logfile.write_text(f'{out}\n')
+        else:
+            print(out)
 
         with sqlite3.connect(DB_PATH) as conn:
             c = conn.cursor()
@@ -381,4 +421,6 @@ with sqlite3.connect(DB_PATH) as conn:
         c.execute('PRAGMA user_version = 1')
 
 print('Listening for messages')
+if log_to_file:
+    print('Logging to file')
 client.run_until_disconnected()

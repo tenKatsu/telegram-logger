@@ -13,3 +13,10 @@ disabled_chats = []
 
 # Whether to save received media.
 save_media = true
+
+# Whether to log to files instead of stdout.
+log_to_file = false
+
+# Whether to use ANSI color codes for logs.
+# If not specified, the default is to use colors only when logging to stdout and it is a tty.
+#log_colors = true
