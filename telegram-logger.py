@@ -27,6 +27,10 @@ DB_PATH = 'data.sqlite3'
 
 config = toml.load('config.toml')
 
+enabled_chats = config.get('enabled_chats', [])
+disabled_chats = config.get('disabled_chats', [])
+save_media = config.get('save_media', True)
+
 client = TelegramClient('telegram-logger', config['api_id'], config['api_hash'])
 client.start()
 
@@ -47,9 +51,6 @@ def get_display_name(entity):
 
 
 def is_enabled(chat_id):
-    enabled_chats = config.get('enabled_chats', [])
-    disabled_chats = config.get('disabled_chats', [])
-
     return (not enabled_chats or chat_id in enabled_chats) and (chat_id not in disabled_chats)
 
 
@@ -138,7 +139,7 @@ async def on_new_message(event):
             'media_filename': filename,
         })
 
-    if msg.media and not isinstance(msg.media, MessageMediaWebPage):
+    if msg.media and not isinstance(msg.media, MessageMediaWebPage) and save_media:
         path = Path('media', str(chat.id), str(msg.id))
         path.mkdir(parents=True, exist_ok=True)
         await client.download_media(msg, path)
@@ -258,7 +259,7 @@ async def on_message_edited(event):
             'media_filename': filename,
         })
 
-    if msg.media and not isinstance(msg.media, MessageMediaWebPage):
+    if msg.media and not isinstance(msg.media, MessageMediaWebPage) and save_media:
         path = Path('media', str(chat.id), str(msg.id))
         path.mkdir(parents=True, exist_ok=True)
         await client.download_media(msg, path)

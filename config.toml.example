@@ -10,3 +10,6 @@ enabled_chats = []
 
 # Disable in chats with the given IDs.
 disabled_chats = []
+
+# Whether to save received media.
+save_media = true
