@@ -143,8 +143,8 @@ async def on_new_message(event):
     if log_to_file:
         logfile = Path('logs', f'{chat.id}.log')
         logfile.parent.mkdir(exist_ok=True)
-        logfile.open('a')
-        logfile.write_text(f'{out}\n')
+        with logfile.open('a') as fd:
+            fd.write(f'{out}\n')
     else:
         print(out)
 
@@ -270,8 +270,8 @@ async def on_message_edited(event):
     if log_to_file:
         logfile = Path('logs', f'{chat.id}.log')
         logfile.parent.mkdir(exist_ok=True)
-        logfile.open('a')
-        logfile.write_text(f'{out}\n')
+        with logfile.open('a') as fd:
+            fd.write(f'{out}\n')
     else:
         print(out)
 
@@ -376,8 +376,8 @@ async def on_message_deleted(event):
 
         if log_to_file:
             logfile = Path('logs', f'{chat.id}.log')
-            logfile.open('a')
-            logfile.write_text(f'{out}\n')
+            with logfile.open('a') as fd:
+                fd.write(f'{out}\n')
         else:
             print(out)
 
