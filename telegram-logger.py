@@ -115,16 +115,16 @@ async def on_new_message(event: events.NewMessage.Event) -> None:
 
     text = msg.message
 
-    chat_display = f'[{get_display_name(chat)} ({chat.id})]'
-    msg_display = f'({msg.id})'
+    chat_display = f'[{get_display_name(chat)}]'
+    msg_display = f''
     if user:
         user_display = f'<{get_display_name(user)} ({user.id})>'
 
-    out = f'{GRAY}{iso_date(date)}{RESET} {BOLD}{BLUE}MSG{RESET} {BOLD}{GRAY}{chat_display}{RESET} {GRAY}{msg_display}{RESET}'
+    out = f'{iso_date(date)} | {chat_display} > {msg_display}'
     if user:
-        out += f' {BOLD}{user_display}{RESET}'
+        out += f'{user_display}'
     if text:
-        out += f' {text}{RESET}'
+        out += f' {text}'
     if msg.media and not isinstance(msg.media, MessageMediaWebPage):
         media_type = re.sub(r'^MessageMedia', '', msg.media.__class__.__name__)
         try:
@@ -136,7 +136,7 @@ async def on_new_message(event: events.NewMessage.Event) -> None:
             media_display = f'[{media_type}: {filename}]'
         else:
             media_display = f'[{media_type}]'
-        out += f' {MAGENTA}{media_display}{RESET}'
+        out += f'{media_display}'
     else:
         media_type = None
         filename = None
@@ -216,8 +216,8 @@ async def on_message_edited(event: events.MessageEdited.Event) -> None:
     #    # Non-text change (e.g. inline keyboard)
     #    return
 
-    chat_display = f'[{get_display_name(chat)} ({chat.id})]'
-    msg_display = f'({msg.id})'
+    chat_display = f'[{get_display_name(chat)}]'
+    msg_display = ''
     if user:
         user_display = f'<{get_display_name(user)} ({user.id})>'
     if msg.media and not isinstance(msg.media, MessageMediaWebPage):
@@ -234,13 +234,13 @@ async def on_message_edited(event: events.MessageEdited.Event) -> None:
         media_type = None
         filename = None
 
-    out = f'{GRAY}{iso_date(date)}{RESET} {BOLD}{YELLOW}EDIT{RESET} {BOLD}{GRAY}{chat_display}{RESET} {GRAY}{msg_display}{RESET}'
+    out = f'{iso_date(date)} | {chat_display} (Edited) > {msg_display}'
     if user:
-        out += f' {BOLD}{user_display}{RESET}'
+        out += f'{user_display}'
     if old_text or old_media_type:
         out += '\n-'
         if old_text:
-            out += f'{RED}{old_text}{RESET}'
+            out += f'{old_text}'
         if old_media_type:
             if old_filename:
                 old_media_display = f'[{old_media_type}: {old_filename}]'
@@ -249,11 +249,11 @@ async def on_message_edited(event: events.MessageEdited.Event) -> None:
 
             if old_text:
                 out += ' '
-            out += f'{MAGENTA}{old_media_display}{RESET}'
+            out += f'{old_media_display}'
 
         out += '\n+'
         if text:
-            out += f'{GREEN}{text}{RESET}'
+            out += f'{text}'
         if msg.media and not isinstance(msg.media, MessageMediaWebPage):
             if text:
                 out += ' '
@@ -317,7 +317,7 @@ async def on_message_deleted(event: events.MessageDeleted.Event) -> None:
         chat_display = f'[{get_display_name(chat)} ({chat.id})]'
 
     for msg_id in event.deleted_ids:
-        msg_display = f'({msg_id})'
+        msg_display = ''
 
         with sqlite3.connect(DB_PATH) as conn:
             c = conn.cursor()
@@ -356,14 +356,14 @@ async def on_message_deleted(event: events.MessageDeleted.Event) -> None:
         if user:
             user_display = f'<{get_display_name(user)} ({user.id})>'
 
-        out = f'{GRAY}{iso_date(date)}{RESET} {BOLD}{RED}DEL{RESET}'
+        out = f'{iso_date(date)} DELETED MESSAGE'
         if chat:
-            out += f' {BOLD}{GRAY}{chat_display}{RESET}'
-        out += f' {GRAY}{msg_display}{RESET}'
+            out += f' {chat_display}'
+        out += f' {msg_display}'
         if user:
-            out += f' {RESET}{BOLD}{user_display}'
+            out += f' {user_display}'
         if old_text:
-            out += f' {RESET}{RED}{old_text}'
+            out += f' {old_text}'
         if old_media_type:
             if old_filename:
                 old_media_display = f'[{old_media_type}: {old_filename}]'
@@ -372,7 +372,7 @@ async def on_message_deleted(event: events.MessageDeleted.Event) -> None:
 
             if old_text:
                 out += ' '
-            out += f'{MAGENTA}{old_media_display}{RESET}'
+            out += f'{old_media_display}'
         out += RESET
 
         if log_to_file:
